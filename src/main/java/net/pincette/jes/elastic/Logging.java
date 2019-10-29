@@ -5,6 +5,7 @@ import static java.text.MessageFormat.format;
 import static java.time.Instant.now;
 import static java.time.Instant.ofEpochMilli;
 import static java.time.ZoneId.systemDefault;
+import static java.util.Arrays.stream;
 import static java.util.UUID.randomUUID;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.SEVERE;
@@ -76,9 +77,10 @@ public class Logging {
 
   private Logging() {}
 
-  private static String command(final JsonObject command, final Aggregate aggregate) {
+  private static String command(
+      final JsonObject command, final Aggregate aggregate, final String serviceVersion) {
     return string(
-        ecsGeneral(command, aggregate)
+        ecsGeneral(command, aggregate, serviceVersion)
             .add(ECS_MESSAGE, commandMessage(command))
             .add(ECS_EVENT, ecsCommandEvent(command))
             .add(ECS_LOG, ecsLog(ECS_INFO))
@@ -126,13 +128,14 @@ public class Logging {
         .add(ECS_TIMEZONE, systemDefault().toString());
   }
 
-  private static JsonObjectBuilder ecsGeneral(final JsonObject json, final Aggregate aggregate) {
+  private static JsonObjectBuilder ecsGeneral(
+      final JsonObject json, final Aggregate aggregate, final String serviceVersion) {
     return createObjectBuilder()
         .add(ECS_TIMESTAMP, now().toString())
         .add(ECS_LABELS, ecsLabels(aggregate))
         .add(ECS_TAGS, ecsTags(aggregate))
-        .add(ECS_SERVICE, ecsService(aggregate))
-        .add(ECS_AGENT, ecsService(aggregate))
+        .add(ECS_SERVICE, ecsService(aggregate, serviceVersion))
+        .add(ECS_AGENT, ecsService(aggregate, serviceVersion))
         .add(ECS, ecsVersion())
         .add(ECS_HOST, ecsHost(json));
   }
@@ -145,10 +148,12 @@ public class Logging {
     return createObjectBuilder().add(ECS_OS, ecsOs());
   }
 
+  private static JsonObjectBuilder ecsLabels(final String app, final String environment) {
+    return createObjectBuilder().add(ECS_APPLICATION, app).add(ECS_ENVIRONMENT, environment);
+  }
+
   private static JsonObjectBuilder ecsLabels(final Aggregate aggregate) {
-    return createObjectBuilder()
-        .add(ECS_APPLICATION, aggregate.app())
-        .add(ECS_ENVIRONMENT, aggregate.environment());
+    return ecsLabels(aggregate.app(), aggregate.environment());
   }
 
   private static JsonObjectBuilder ecsLog(final String level) {
@@ -161,15 +166,20 @@ public class Logging {
         .add(ECS_VERSION, System.getProperty("os.version"));
   }
 
-  private static JsonArrayBuilder ecsTags(final Aggregate aggregate) {
-    return createArrayBuilder().add(aggregate.environment());
+  private static JsonArrayBuilder ecsTags(final String[] tags) {
+    return stream(tags).reduce(createArrayBuilder(), JsonArrayBuilder::add, (b1, b2) -> b1);
   }
 
-  private static JsonObjectBuilder ecsService(final Aggregate aggregate) {
+  private static JsonArrayBuilder ecsTags(final Aggregate aggregate) {
+    return ecsTags(new String[] {aggregate.environment()});
+  }
+
+  private static JsonObjectBuilder ecsService(
+      final Aggregate aggregate, final String serviceVersion) {
     return createObjectBuilder()
         .add(ECS_NAME, fullType(aggregate))
         .add(ECS_TYPE, "pincette-jes")
-        .add(ECS_VERSION, VERSION);
+        .add(ECS_VERSION, serviceVersion != null ? serviceVersion : "unknown");
   }
 
   private static JsonObjectBuilder ecsUser(final JsonObject json) {
@@ -180,9 +190,10 @@ public class Logging {
     return createObjectBuilder().add(ECS_VERSION, "1.0.0");
   }
 
-  private static String error(final JsonObject command, final Aggregate aggregate) {
+  private static String error(
+      final JsonObject command, final Aggregate aggregate, final String serviceVersion) {
     return string(
-        ecsGeneral(command, aggregate)
+        ecsGeneral(command, aggregate, serviceVersion)
             .add(ECS_MESSAGE, commandMessage(command))
             .add(ECS_EVENT, ecsCommandEvent(command))
             .add(ECS_LOG, ecsLog(ECS_ERROR))
@@ -191,9 +202,10 @@ public class Logging {
         false);
   }
 
-  private static String event(final JsonObject event, final Aggregate aggregate) {
+  private static String event(
+      final JsonObject event, final Aggregate aggregate, final String serviceVersion) {
     return string(
-        ecsGeneral(event, aggregate)
+        ecsGeneral(event, aggregate, serviceVersion)
             .add(ECS_MESSAGE, eventMessage(event))
             .add(
                 ECS_EVENT,
@@ -231,16 +243,42 @@ public class Logging {
       final Level level,
       final String uri,
       final String authorizationHeader) {
+    log(aggregate, level, null, uri, authorizationHeader);
+  }
+
+  /**
+   * Logs commands and events for <code>aggregate</code>. When the log level is at least <code>INFO
+   * </code> all documents appearing on the command and events streams are sent to the log index.
+   * When the log level is at least <code>SEVERE</code> all commands with validation errors are sent
+   * to the log index.
+   *
+   * @param aggregate the given aggregate.
+   * @param level the log level.
+   * @param serviceVersion the version of the service.
+   * @param uri the URI of the Elasticsearch index.
+   * @param authorizationHeader the value for the Authorization header on each request.
+   * @since 1.0
+   */
+  public static void log(
+      final Aggregate aggregate,
+      final Level level,
+      final String serviceVersion,
+      final String uri,
+      final String authorizationHeader) {
     if (level.intValue() <= INFO.intValue()) {
-      aggregate.commands().mapValues(v -> send(command(v, aggregate), uri, authorizationHeader));
-      aggregate.events().mapValues(v -> send(event(v, aggregate), uri, authorizationHeader));
+      aggregate
+          .commands()
+          .mapValues(v -> send(command(v, aggregate, serviceVersion), uri, authorizationHeader));
+      aggregate
+          .events()
+          .mapValues(v -> send(event(v, aggregate, serviceVersion), uri, authorizationHeader));
     }
 
     if (level.intValue() <= SEVERE.intValue()) {
       aggregate
           .replies()
           .filter((k, v) -> hasErrors(v))
-          .mapValues(v -> send(error(v, aggregate), uri, authorizationHeader));
+          .mapValues(v -> send(error(v, aggregate, serviceVersion), uri, authorizationHeader));
     }
   }
 
@@ -256,7 +294,29 @@ public class Logging {
    */
   public static void log(
       final Logger logger, final Level level, final String uri, final String authorizationHeader) {
-    logger.addHandler(new LogHandler(level, uri, authorizationHeader));
+    log(logger, level, null, null, uri, authorizationHeader);
+  }
+
+  /**
+   * Sends all log entries appearing in <code>logger</code> to an Elasticsearch index using the
+   * Elastic Common Schema.
+   *
+   * @param logger the given logger.
+   * @param level the log level.
+   * @param serviceVersion the version of the service.
+   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc.
+   * @param uri the URI of the Elasticsearch index.
+   * @param authorizationHeader the value for the Authorization header on each request.
+   * @since 1.0
+   */
+  public static void log(
+      final Logger logger,
+      final Level level,
+      final String serviceVersion,
+      final String environment,
+      final String uri,
+      final String authorizationHeader) {
+    logger.addHandler(new LogHandler(level, serviceVersion, environment, uri, authorizationHeader));
   }
 
   private static CompletionStage<Boolean> send(
@@ -266,9 +326,18 @@ public class Logging {
 
   private static class LogHandler extends Handler {
     private final String authorizationHeader;
+    private final String environment;
+    private final String serviceVersion;
     private final String uri;
 
-    private LogHandler(final Level level, final String uri, final String authorizationHeader) {
+    private LogHandler(
+        final Level level,
+        final String serviceVersion,
+        final String environment,
+        final String uri,
+        final String authorizationHeader) {
+      this.environment = environment;
+      this.serviceVersion = serviceVersion;
       this.uri = uri;
       this.authorizationHeader = authorizationHeader;
       setFilter(record -> record.getLevel().intValue() <= level.intValue());
@@ -296,26 +365,31 @@ public class Logging {
           .add(ECS_TIMEZONE, systemDefault().toString());
     }
 
-    private static JsonObjectBuilder ecsGeneral(final LogRecord record) {
+    private static JsonObjectBuilder ecsGeneral(
+        final LogRecord record, final String serviceVersion, final String environment) {
       return createObjectBuilder()
           .add(ECS_TIMESTAMP, ofEpochMilli(record.getMillis()).toString())
-          .add(ECS_SERVICE, ecsService(record))
-          .add(ECS_AGENT, ecsService(record))
+          .add(ECS_SERVICE, ecsService(record, serviceVersion))
+          .add(ECS_AGENT, ecsService(record, serviceVersion))
+          .add(ECS_TAGS, ecsTags(new String[] {environment}))
+          .add(ECS_LABELS, ecsLabels(record.getLoggerName(), environment))
           .add(ECS, ecsVersion())
           .add(ECS_HOST, ecsHost());
     }
 
-    private static JsonObjectBuilder ecsService(final LogRecord record) {
+    private static JsonObjectBuilder ecsService(
+        final LogRecord record, final String serviceVersion) {
       return createObjectBuilder()
           .add(ECS_NAME, record.getLoggerName())
           .add(ECS_TYPE, "pincette-jes")
-          .add(ECS_VERSION, VERSION);
+          .add(ECS_VERSION, serviceVersion != null ? serviceVersion : "unknown");
     }
 
-    private static String logMessage(final LogRecord record) {
+    private static String logMessage(
+        final LogRecord record, final String serviceVersion, final String environment) {
       return string(
           addIf(
-                  ecsGeneral(record)
+                  ecsGeneral(record, serviceVersion, environment)
                       .add(ECS_MESSAGE, message(record))
                       .add(ECS_EVENT, ecsEvent(record))
                       .add(ECS_LOG, ecsLog(record.getLevel().toString())),
@@ -349,7 +423,7 @@ public class Logging {
 
     @Override
     public void publish(final LogRecord record) {
-      send(logMessage(record), uri, authorizationHeader);
+      send(logMessage(record, serviceVersion, environment), uri, authorizationHeader);
     }
   }
 }
