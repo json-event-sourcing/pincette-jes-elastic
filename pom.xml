@@ -7,10 +7,10 @@
   <groupId>net.pincette</groupId>
   <artifactId>pincette-jes-elastic</artifactId>
   <packaging>jar</packaging>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <name>pincette-jes-elastic</name>
   <description>Elasticsearch Utilities for pincette-jes</description>
-  <url>https://github.com/wdonne/pincette-jes-elastic</url>
+  <url>https://github.com/json-event-sourcing/pincette-jes-elastic</url>
 
   <organization>
     <name>Pincette</name>
@@ -18,9 +18,9 @@
   </organization>
 
   <scm>
-    <url>https://github.com/wdonne/pincette-jes-elastic</url>
-    <connection>scm:git@github.com:wdonne/pincette-jes-elastic.git</connection>
-    <developerConnection>scm:git@github.com:wdonne/pincette-jes-elastic.git</developerConnection>
+    <url>https://github.com/json-event-sourcing/pincette-jes-elastic</url>
+    <connection>scm:git@github.com:json-event-sourcing/pincette-jes-elastic.git</connection>
+    <developerConnection>scm:git@github.com:json-event-sourcing/pincette-jes-elastic.git</developerConnection>
   </scm>
 
   <developers>
@@ -57,12 +57,12 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-jes-util</artifactId>
-      <version>1.0.3</version>
+      <version>1.0.4</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-common</artifactId>
-      <version>1.6.3</version>
+      <version>1.6.5</version>
     </dependency>
     <dependency>
       <groupId>javax.json</groupId>

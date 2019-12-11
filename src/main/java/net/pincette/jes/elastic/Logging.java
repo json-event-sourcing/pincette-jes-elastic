@@ -14,6 +14,7 @@ import static javax.json.Json.createObjectBuilder;
 import static net.pincette.jes.elastic.Util.errorMessage;
 import static net.pincette.jes.elastic.Util.sendMessage;
 import static net.pincette.jes.util.JsonFields.COMMAND;
+import static net.pincette.jes.util.JsonFields.CORR;
 import static net.pincette.jes.util.JsonFields.ID;
 import static net.pincette.jes.util.JsonFields.STATUS_CODE;
 import static net.pincette.jes.util.JsonFields.TIMESTAMP;
@@ -43,6 +44,7 @@ import net.pincette.jes.Aggregate;
  * @since 1.0
  */
 public class Logging {
+  private static final String COMMAND_ERROR = "COMMAND_ERROR";
   private static final String ECS = "ecs";
   private static final String ECS_ACTION = "action";
   private static final String ECS_AGENT = "agent";
@@ -52,7 +54,7 @@ public class Logging {
   private static final String ECS_COMMAND = "command";
   private static final String ECS_CREATED = "created";
   private static final String ECS_ENVIRONMENT = "environment";
-  private static final String ECS_ERROR = "SEVERE";
+  private static final String ECS_ERROR = "error";
   private static final String ECS_EVENT = "event";
   private static final String ECS_HOST = "host";
   private static final String ECS_ID = "id";
@@ -70,10 +72,11 @@ public class Logging {
   private static final String ECS_TAGS = "tags";
   private static final String ECS_TIMESTAMP = "@timestamp";
   private static final String ECS_TIMEZONE = "timezone";
+  private static final String ECS_TRACE = "trace";
   private static final String ECS_TYPE = "type";
   private static final String ECS_USER = "user";
   private static final String ECS_VERSION = "version";
-  private static final String VERSION = "1.0";
+  private static final String UNKNOWN = "unknown";
 
   private Logging() {}
 
@@ -136,6 +139,7 @@ public class Logging {
         .add(ECS_TAGS, ecsTags(aggregate))
         .add(ECS_SERVICE, ecsService(aggregate, serviceVersion))
         .add(ECS_AGENT, ecsService(aggregate, serviceVersion))
+        .add(ECS_TRACE, ecsTrace(json))
         .add(ECS, ecsVersion())
         .add(ECS_HOST, ecsHost(json));
   }
@@ -179,7 +183,11 @@ public class Logging {
     return createObjectBuilder()
         .add(ECS_NAME, fullType(aggregate))
         .add(ECS_TYPE, "pincette-jes")
-        .add(ECS_VERSION, serviceVersion != null ? serviceVersion : "unknown");
+        .add(ECS_VERSION, serviceVersion != null ? serviceVersion : UNKNOWN);
+  }
+
+  private static JsonObjectBuilder ecsTrace(final JsonObject json) {
+    return createObjectBuilder().add(ECS_ID, json.getString(CORR, UNKNOWN));
   }
 
   private static JsonObjectBuilder ecsUser(final JsonObject json) {
@@ -196,7 +204,7 @@ public class Logging {
         ecsGeneral(command, aggregate, serviceVersion)
             .add(ECS_MESSAGE, commandMessage(command))
             .add(ECS_EVENT, ecsCommandEvent(command))
-            .add(ECS_LOG, ecsLog(ECS_ERROR))
+            .add(ECS_LOG, ecsLog(COMMAND_ERROR))
             .add(ECS_ERROR, ecsError(command))
             .build(),
         false);
@@ -382,7 +390,7 @@ public class Logging {
       return createObjectBuilder()
           .add(ECS_NAME, record.getLoggerName())
           .add(ECS_TYPE, "pincette-jes")
-          .add(ECS_VERSION, serviceVersion != null ? serviceVersion : "unknown");
+          .add(ECS_VERSION, serviceVersion != null ? serviceVersion : UNKNOWN);
     }
 
     private static String logMessage(
