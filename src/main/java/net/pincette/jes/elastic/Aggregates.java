@@ -5,7 +5,7 @@ import static net.pincette.jes.elastic.Util.sendMessage;
 import static net.pincette.jes.util.JsonFields.ID;
 import static net.pincette.jes.util.JsonFields.TIMESTAMP;
 import static net.pincette.jes.util.JsonFields.TYPE;
-import static net.pincette.util.Json.string;
+import static net.pincette.json.JsonUtil.string;
 import static net.pincette.util.Util.tryToGetRethrow;
 
 import javax.json.JsonObject;

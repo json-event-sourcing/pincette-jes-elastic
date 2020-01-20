@@ -2,33 +2,34 @@ package net.pincette.jes.elastic;
 
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.Long.toHexString;
+import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static net.pincette.jes.MonitorSteps.ERROR;
 import static net.pincette.jes.MonitorSteps.allError;
 import static net.pincette.jes.MonitorSteps.allOk;
 import static net.pincette.jes.elastic.Util.sendMessage;
+import static net.pincette.json.JsonUtil.string;
 import static net.pincette.util.Collections.intersection;
-import static net.pincette.util.Json.string;
 import static net.pincette.util.Pair.pair;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.json.JsonArray;
 import javax.json.JsonObject;
-import javax.json.JsonValue;
+import net.pincette.function.SideEffect;
 import net.pincette.jes.Aggregate;
-import net.pincette.util.Json;
 import net.pincette.util.Pair;
+import net.pincette.util.TimedCache;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.KStream;
 
 /**
  * Connects a JSON Event Sourcing aggregate to the Elasticsearch APM service.
@@ -61,18 +62,31 @@ public class APM {
   private static final String APM_TYPE = "type";
   private static final String COMMAND = "command";
   private static final String STEP = "step";
-  private static final String STEPS = "steps";
   private static final String TIMESTAMP = "timestamp";
 
   private APM() {}
 
-  private static Map<String, JsonObject> byStep(final JsonArray steps) {
-    return getSteps(steps)
+  private static Map<String, JsonObject> byStep(final List<JsonObject> steps) {
+    return steps.stream()
         .collect(toMap(step -> step.getString(STEP), step -> step, (v1, v2) -> v1));
   }
 
-  private static String createError(final JsonArray steps) {
-    return getSteps(steps)
+  private static Optional<List<JsonObject>> completeSteps(
+      final String id, final TimedCache<String, List<JsonObject>> groups, final JsonObject step) {
+    final List<JsonObject> group = groups.get(id).orElseGet(ArrayList::new);
+
+    if (!hasStep(group, step.getString(STEP))) {
+      group.add(step);
+    }
+
+    return Optional.ofNullable(
+        isComplete(group)
+            ? group
+            : SideEffect.<List<JsonObject>>run(() -> groups.put(id, group)).andThenGet(() -> null));
+  }
+
+  private static String createError(final List<JsonObject> steps) {
+    return steps.stream()
         .filter(s -> ERROR.equals(s.getString(STEP, null)))
         .findFirst()
         .map(
@@ -94,16 +108,16 @@ public class APM {
         .orElse(null);
   }
 
-  private static String createErrorMessage(final Aggregate aggregate, final JsonArray steps) {
-    return createMetadata(aggregate) + "\n" + createError(steps) + "\n";
+  private static String createErrorMessage(final String serviceName, final List<JsonObject> steps) {
+    return createMetadata(serviceName) + "\n" + createError(steps) + "\n";
   }
 
-  private static String createMessage(final Aggregate aggregate, final JsonArray steps) {
+  private static String createMessage(final String serviceName, final List<JsonObject> steps) {
     final Map<String, JsonObject> byStep = byStep(steps);
     final String traceId = generateId() + generateId();
     final String transactionId = generateId();
 
-    return createMetadata(aggregate)
+    return createMetadata(serviceName)
         + "\n"
         + createSpans(transactionId, traceId, byStep)
         + "\n"
@@ -111,7 +125,7 @@ public class APM {
         + "\n";
   }
 
-  private static String createMetadata(final Aggregate aggregate) {
+  private static String createMetadata(final String serviceName) {
     return string(
         createObjectBuilder()
             .add(
@@ -121,7 +135,7 @@ public class APM {
                         APM_SERVICE,
                         createObjectBuilder()
                             .add(APM_AGENT, createObjectBuilder().add(APM_NAME, "pincette-jes-apm"))
-                            .add(APM_NAME, name(aggregate))))
+                            .add(APM_NAME, serviceName)))
             .build(),
         false);
   }
@@ -184,8 +198,8 @@ public class APM {
     return toHexString(new Random().nextLong());
   }
 
-  private static Set<String> getAllSteps(final JsonArray steps) {
-    return getSteps(steps)
+  private static Set<String> getAllSteps(final List<JsonObject> steps) {
+    return steps.stream()
         .map(step -> step.getString(STEP, null))
         .filter(Objects::nonNull)
         .collect(toSet());
@@ -204,10 +218,6 @@ public class APM {
         .orElse("Unknown error");
   }
 
-  private static Stream<JsonObject> getSteps(final JsonArray steps) {
-    return steps.stream().filter(Json::isObject).map(JsonValue::asJsonObject);
-  }
-
   private static long getTotalDuration(final Collection<JsonObject> steps) {
     final Pair<Long, Long> pair =
         steps.stream()
@@ -220,11 +230,11 @@ public class APM {
     return pair.second - pair.first;
   }
 
-  private static boolean hasStep(final JsonArray steps, final String step) {
-    return getSteps(steps).anyMatch(s -> step.equals(s.getString(STEP, null)));
+  private static boolean hasStep(final List<JsonObject> steps, final String step) {
+    return steps.stream().anyMatch(s -> step.equals(s.getString(STEP, null)));
   }
 
-  private static boolean isComplete(final JsonArray steps) {
+  private static boolean isComplete(final List<JsonObject> steps) {
     final Set<String> all = getAllSteps(steps);
 
     return intersection(all, allOk()).size() == allOk().size()
@@ -232,8 +242,8 @@ public class APM {
   }
 
   /**
-   * Takes the monitor stream from <code>aggregate</code> and sends a message to APM for each
-   * message.
+   * Listens to the monitor stream of <code>aggregate</code> and sends a message to APM for each
+   * message group, which are a collection of steps.
    *
    * @param aggregate the given aggregate.
    * @param uri the APM endpoint.
@@ -242,40 +252,44 @@ public class APM {
    */
   public static void monitor(
       final Aggregate aggregate, final String uri, final String authorizationHeader) {
-    aggregate
-        .monitor()
+    monitor(aggregate.monitor(), type(aggregate), uri, authorizationHeader);
+  }
+
+  /**
+   * Listens to <code>stream</code> and sends a message to APM for each message group, which are a
+   * collection of steps.
+   *
+   * @param stream the given monitor stream.
+   * @param type the aggregate type.
+   * @param uri the APM endpoint.
+   * @param authorizationHeader the value for the Authorization header on each request.
+   * @since 1.1
+   */
+  public static void monitor(
+      final KStream<String, JsonObject> stream,
+      final String type,
+      final String uri,
+      final String authorizationHeader) {
+    final TimedCache<String, List<JsonObject>> groups = new TimedCache<>(ofSeconds(30));
+
+    stream
         .filter((k, v) -> v.containsKey(STEP) && v.containsKey(TIMESTAMP))
-        .groupByKey()
-        .aggregate(
-            () -> createObjectBuilder().add(STEPS, createArrayBuilder()).build(),
-            (k, v, json) ->
-                !hasStep(json.getJsonArray(STEPS), v.getString(STEP))
-                    ? createObjectBuilder(json)
-                        .add(STEPS, createArrayBuilder(json.getJsonArray(STEPS)).add(v))
-                        .build()
-                    : json)
-        .toStream()
-        .filter((k, v) -> isComplete(v.getJsonArray(STEPS)))
         .map(
             (k, v) ->
                 new KeyValue<>(
                     k,
-                    sendMessage(
-                        Optional.ofNullable(v.getJsonArray(STEPS))
-                            .map(
-                                steps ->
-                                    hasStep(steps, ERROR)
-                                        ? createErrorMessage(aggregate, steps)
-                                        : createMessage(aggregate, steps))
-                            .orElse(null),
-                        uri,
-                        "POST",
-                        "application/x-ndjson",
-                        authorizationHeader)));
-  }
-
-  private static String name(final Aggregate aggregate) {
-    return aggregate.app() + "-" + aggregate.type() + "-" + aggregate.environment();
+                    completeSteps(k, groups, v)
+                        .map(
+                            steps ->
+                                hasStep(steps, ERROR)
+                                    ? createErrorMessage(type, steps)
+                                    : createMessage(type, steps))
+                        .orElse(null)))
+        .filter((k, v) -> v != null)
+        .map(
+            (k, v) ->
+                new KeyValue<>(
+                    k, sendMessage(v, uri, "POST", "application/x-ndjson", authorizationHeader)));
   }
 
   private static long start(final Collection<JsonObject> steps) {
@@ -288,5 +302,9 @@ public class APM {
 
   private static long timestamp(final JsonObject step) {
     return step.getJsonNumber(TIMESTAMP).longValue();
+  }
+
+  private static String type(final Aggregate aggregate) {
+    return aggregate.app() + "-" + aggregate.type() + "-" + aggregate.environment();
   }
 }
