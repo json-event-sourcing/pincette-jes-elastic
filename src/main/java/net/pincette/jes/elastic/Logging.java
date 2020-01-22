@@ -253,6 +253,7 @@ public class Logging {
     logger.addHandler(
         new LogHandler(
             new ElasticCommonSchema()
+                .withApp(logger.getName())
                 .withLogLevel(level)
                 .withService(logger.getName())
                 .withServiceVersion(serviceVersion)

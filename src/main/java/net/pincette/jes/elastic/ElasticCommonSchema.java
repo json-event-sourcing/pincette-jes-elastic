@@ -9,6 +9,7 @@ import static net.pincette.json.JsonUtil.getValue;
 import static net.pincette.util.Util.getStackTrace;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
@@ -17,6 +18,12 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+/**
+ * This lets you build JSON messages according to the Elastic Common Schema.
+ *
+ * @author Werner Donn\u00e9
+ * @since 1.1
+ */
 public class ElasticCommonSchema {
   private static final String ECS = "ecs";
   private static final String ECS_ACTION = "action";
@@ -99,58 +106,136 @@ public class ElasticCommonSchema {
     return createObjectBuilder().add(ECS_VERSION, "1.4.0");
   }
 
+  /**
+   * Checks if the given message is an ECS message.
+   *
+   * @param json the given JSON message.
+   * @return The result is <code>true</code> when it is an ECS message.
+   * @since 1.1
+   */
   public static boolean isEcs(final JsonObject json) {
     return getValue(json, "/" + ECS + "/" + ECS_VERSION).isPresent();
   }
 
+  /**
+   * Returns a new message builder.
+   *
+   * @return The builder.
+   * @since 1.1
+   */
   public Builder builder() {
     return new Builder();
   }
 
+  /**
+   * Returns the app property.
+   *
+   * @return The property.
+   * @since 1.1
+   */
   public String getApp() {
     return app;
   }
 
+  /**
+   * Returns the environment property.
+   *
+   * @return The property.
+   * @since 1.1
+   */
   public String getEnvironment() {
     return environment;
   }
 
+  /**
+   * Returns the log level property.
+   *
+   * @return The property.
+   * @since 1.1
+   */
   public Level getLogLevel() {
     return logLevel;
   }
 
+  /**
+   * Returns the service property.
+   *
+   * @return The property.
+   * @since 1.1
+   */
   public String getService() {
     return service;
   }
 
+  /**
+   * Returns the service version property.
+   *
+   * @return The property.
+   * @since 1.1
+   */
   public String getServiceVersion() {
     return serviceVersion;
   }
 
+  /**
+   * Sets the app property.
+   *
+   * @param app the property.
+   * @return The object itself.
+   * @since 1.1
+   */
   public ElasticCommonSchema withApp(final String app) {
     this.app = app;
 
     return this;
   }
 
+  /**
+   * Sets the environment property.
+   *
+   * @param environment the property.
+   * @return The object itself.
+   * @since 1.1
+   */
   public ElasticCommonSchema withEnvironment(final String environment) {
     this.environment = environment;
 
     return this;
   }
 
+  /**
+   * Sets the log level property.
+   *
+   * @param logLevel the property.
+   * @return The object itself.
+   * @since 1.1
+   */
   public ElasticCommonSchema withLogLevel(final Level logLevel) {
     this.logLevel = logLevel;
 
     return this;
   }
 
+  /**
+   * Sets the service property.
+   *
+   * @param service the property.
+   * @return The object itself.
+   * @since 1.1
+   */
   public ElasticCommonSchema withService(final String service) {
     this.service = service;
 
     return this;
   }
 
+  /**
+   * Sets the service version property.
+   *
+   * @param serviceVersion the property.
+   * @return The object itself.
+   * @since 1.1
+   */
   public ElasticCommonSchema withServiceVersion(final String serviceVersion) {
     this.serviceVersion = serviceVersion;
 
@@ -171,46 +256,116 @@ public class ElasticCommonSchema {
       return message.build();
     }
 
+    /**
+     * Add any object as a field.
+     *
+     * @param field the field.
+     * @param data the builder for the object.
+     * @return The builder itself.
+     * @since 1.1
+     */
     public Builder add(final String field, final JsonObjectBuilder data) {
       message.add(field, data);
 
       return this;
     }
 
+    /**
+     * Add a simple field.
+     *
+     * @param field the field.
+     * @param value the value.
+     * @return The builder itself.
+     * @since 1.1
+     */
     public Builder add(final String field, final String value) {
       message.add(field, value);
 
       return this;
     }
 
+    /**
+     * Prepares the addition of an error object.
+     *
+     * @return A new error builder.
+     * @since 1.1
+     */
     public ErrorBuilder addError() {
       return new ErrorBuilder(this);
     }
 
+    /**
+     * Prepares the addition of an event object.
+     *
+     * @return A new event builder.
+     * @since 1.1
+     */
     public EventBuilder addEvent() {
       return new EventBuilder(this);
     }
 
+    /**
+     * Prepares the addition of an HTTP object.
+     *
+     * @return A new HTTP builder.
+     * @since 1.1
+     */
     public HttpBuilder addHttp() {
       return new HttpBuilder(this);
     }
 
+    /**
+     * Add something conditionally.
+     *
+     * @param test the test that should be passed.
+     * @param add the function to add something.
+     * @return The builder itself.
+     * @since 1.1
+     */
     public Builder addIf(final Predicate<Builder> test, final UnaryOperator<Builder> add) {
       return test.test(this) ? add.apply(this) : this;
     }
 
+    /**
+     * Add the message field.
+     *
+     * @param message the message itself.
+     * @return The builder itself.
+     * @since 1.1
+     */
     public Builder addMessage(final String message) {
       return add(ECS_MESSAGE, message);
     }
 
+    /**
+     * Add the timestamp field.
+     *
+     * @param timestamp the timestamp itself.
+     * @return The builder itself.
+     * @since 1.1
+     */
     public Builder addTimestamp(final Instant timestamp) {
       return add(ECS_TIMESTAMP, timestamp.toString());
     }
 
+    /**
+     * Add the trace field.
+     *
+     * @param id the trace ID.
+     * @return The builder itself.
+     * @since 1.1
+     */
     public Builder addTrace(final String id) {
       return add(ECS_TRACE, ecsTrace(id));
     }
 
+    /**
+     * Add the user field.
+     *
+     * @param username the username.
+     * @return The builder itself.
+     * @since 1.1
+     */
     public Builder addUser(final String username) {
       return add(ECS_HOST, ecsHost(username));
     }
@@ -232,11 +387,13 @@ public class ElasticCommonSchema {
     }
 
     private JsonObjectBuilder ecsLabels() {
-      return createObjectBuilder().add(ECS_APPLICATION, app).add(ECS_ENVIRONMENT, environment);
+      return createObjectBuilder()
+          .add(ECS_APPLICATION, app != null ? app : UNKNOWN)
+          .add(ECS_ENVIRONMENT, environment != null ? environment : UNKNOWN);
     }
 
     private JsonObjectBuilder ecsLog() {
-      return createObjectBuilder().add(ECS_LEVEL, logLevel.toString());
+      return createObjectBuilder().add(ECS_LEVEL, logLevel != null ? logLevel.toString() : UNKNOWN);
     }
 
     private JsonObjectBuilder ecsService() {
@@ -247,7 +404,9 @@ public class ElasticCommonSchema {
     }
 
     private JsonArrayBuilder ecsTags(final String[] tags) {
-      return stream(tags).reduce(createArrayBuilder(), JsonArrayBuilder::add, (b1, b2) -> b1);
+      return stream(tags)
+          .filter(Objects::nonNull)
+          .reduce(createArrayBuilder(), JsonArrayBuilder::add, (b1, b2) -> b1);
     }
 
     private JsonObjectBuilder ecsTrace(final String id) {
@@ -259,6 +418,11 @@ public class ElasticCommonSchema {
     }
   }
 
+  /**
+   * The error message builder.
+   *
+   * @since 1.1
+   */
   public class ErrorBuilder {
     private Builder builder;
     private JsonObjectBuilder error = createObjectBuilder();
@@ -267,29 +431,65 @@ public class ElasticCommonSchema {
       this.builder = builder;
     }
 
+    /**
+     * Add the error code.
+     *
+     * @param code the code.
+     * @return The error builder itself.
+     * @since 1.1
+     */
     public ErrorBuilder addCode(final String code) {
       error.add(ECS_CODE, code);
 
       return this;
     }
 
+    /**
+     * Add the ID field.
+     *
+     * @param id the ID.
+     * @return The error builder itself.
+     * @since 1.1
+     */
     public ErrorBuilder addId(final String id) {
       error.add(ECS_ID, id);
 
       return this;
     }
 
+    /**
+     * Add something conditionally.
+     *
+     * @param test the test that should be passed.
+     * @param add the function to add something.
+     * @return The error builder itself.
+     * @since 1.1
+     */
     public ErrorBuilder addIf(
         final Predicate<ErrorBuilder> test, final UnaryOperator<ErrorBuilder> add) {
       return test.test(this) ? add.apply(this) : this;
     }
 
+    /**
+     * Add the error message.
+     *
+     * @param message the message.
+     * @return The error builder itself.
+     * @since 1.1
+     */
     public ErrorBuilder addMessage(final String message) {
       error.add(ECS_MESSAGE, message);
 
       return this;
     }
 
+    /**
+     * Add an exception.
+     *
+     * @param t the exception.
+     * @return The error builder itself.
+     * @since 1.1
+     */
     public ErrorBuilder addThrowable(final Throwable t) {
       error
           .add(ECS_MESSAGE, Optional.ofNullable(t.getMessage()).orElse(ECS_EXCEPTION))
@@ -299,6 +499,12 @@ public class ElasticCommonSchema {
       return this;
     }
 
+    /**
+     * Builds the error message and adds it to the general ECS builder.
+     *
+     * @return The ECS builder.
+     * @since 1.1
+     */
     public Builder build() {
       builder.message.add(ECS_ERROR, error);
 
@@ -306,6 +512,11 @@ public class ElasticCommonSchema {
     }
   }
 
+  /**
+   * The event message builder.
+   *
+   * @since 1.1
+   */
   public class EventBuilder {
     private Builder builder;
     private JsonObjectBuilder event =
@@ -320,119 +531,258 @@ public class ElasticCommonSchema {
       this.builder = builder;
     }
 
+    /**
+     * Add the action field.
+     *
+     * @param action the action.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addAction(final String action) {
       event.add(ECS_ACTION, action);
 
       return this;
     }
 
+    /**
+     * Add the code field.
+     *
+     * @param code the code.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addCode(final String code) {
       event.add(ECS_CODE, code);
 
       return this;
     }
 
+    /**
+     * Add the created field.
+     *
+     * @param created the creation time.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addCreated(final Instant created) {
       event.add(ECS_CREATED, created.toString());
 
       return this;
     }
 
+    /**
+     * Add the dataset field.
+     *
+     * @param dataset the dataset.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addDataset(final String dataset) {
       event.add(ECS_DATASET, dataset);
 
       return this;
     }
 
+    /**
+     * Add the duration field.
+     *
+     * @param duration the duration in milliseconds.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addDuration(final long duration) {
       event.add(ECS_DURATION, duration);
 
       return this;
     }
 
+    /**
+     * Add the end field.
+     *
+     * @param end the end time.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addEnd(final Instant end) {
       event.add(ECS_END, end.toString());
 
       return this;
     }
 
+    /**
+     * Set the outcome field to "failure".
+     *
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addFailure() {
       event.add(ECS_OUTCOME, ECS_FAILURE);
 
       return this;
     }
 
+    /**
+     * Add the hash field.
+     *
+     * @param hash the hash.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addHash(final String hash) {
       event.add(ECS_HASH, hash);
 
       return this;
     }
 
+    /**
+     * Add the ID field.
+     *
+     * @param id the ID.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addId(final String id) {
       event.add(ECS_ID, id);
 
       return this;
     }
 
+    /**
+     * Add something conditionally.
+     *
+     * @param test the test that should be passed.
+     * @param add the function to add something.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addIf(
         final Predicate<EventBuilder> test, final UnaryOperator<EventBuilder> add) {
       return test.test(this) ? add.apply(this) : this;
     }
 
+    /**
+     * Add the ingested field.
+     *
+     * @param ingested the ingestion time.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addIngested(final Instant ingested) {
       event.add(ECS_INGESTED, ingested.toString());
 
       return this;
     }
 
+    /**
+     * Add the module field.
+     *
+     * @param module the module.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addModule(final String module) {
       event.add(ECS_MODULE, module);
 
       return this;
     }
 
+    /**
+     * Add the original field.
+     *
+     * @param original the original message.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addOriginal(final String original) {
       event.add(ECS_ORIGINAL, original);
 
       return this;
     }
 
+    /**
+     * Add the provider field.
+     *
+     * @param provider the provider.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addProvider(final String provider) {
       event.add(ECS_PROVIDER, provider);
 
       return this;
     }
 
+    /**
+     * Add the risk score field.
+     *
+     * @param riskScore the risk score.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addRiskScore(final float riskScore) {
       event.add(ECS_RISK_SCORE, riskScore);
 
       return this;
     }
 
+    /**
+     * Add the risk score norm field.
+     *
+     * @param riskScoreNorm the risk score norm.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addRiskScoreNorm(final float riskScoreNorm) {
       event.add(ECS_RISK_SCORE_NORM, riskScoreNorm);
 
       return this;
     }
 
+    /**
+     * Add the sequence field.
+     *
+     * @param sequence the sequence.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addSequence(final long sequence) {
       event.add(ECS_SEQUENCE, sequence);
 
       return this;
     }
 
+    /**
+     * Add the severity field.
+     *
+     * @param severity the severity.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addSeverity(final long severity) {
       event.add(ECS_SEVERITY, severity);
 
       return this;
     }
 
+    /**
+     * Add the start field.
+     *
+     * @param start the start time.
+     * @return The event builder itself.
+     * @since 1.1
+     */
     public EventBuilder addStart(final Instant start) {
       event.add(ECS_START, start.toString());
 
       return this;
     }
 
+    /**
+     * Builds the event message and adds it to the general ECS builder.
+     *
+     * @return The ECS builder.
+     * @since 1.1
+     */
     public Builder build() {
       builder.message.add(ECS_EVENT, event);
 
@@ -440,6 +790,11 @@ public class ElasticCommonSchema {
     }
   }
 
+  /**
+   * The HTTP message builder.
+   *
+   * @since 1.1
+   */
   public class HttpBuilder {
     private Builder builder;
     private JsonObjectBuilder http = createObjectBuilder().add(ECS_VERSION, "1.1");
@@ -452,71 +807,155 @@ public class ElasticCommonSchema {
       this.builder = builder;
     }
 
+    /**
+     * Add something conditionally.
+     *
+     * @param test the test that should be passed.
+     * @param add the function to add something.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addIf(
         final Predicate<HttpBuilder> test, final UnaryOperator<HttpBuilder> add) {
       return test.test(this) ? add.apply(this) : this;
     }
 
+    /**
+     * Add the method field.
+     *
+     * @param method the method.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addMethod(final String method) {
       request.add(ECS_METHOD, method);
 
       return this;
     }
 
+    /**
+     * Add the referrer field.
+     *
+     * @param referrer the referrer.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addReferrer(final String referrer) {
       request.add(ECS_REFERRER, referrer);
 
       return this;
     }
 
+    /**
+     * Add the request body content field.
+     *
+     * @param content the content.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addRequestBodyContent(final String content) {
       requestBody.add(ECS_CONTENT, content(content));
 
       return this;
     }
 
+    /**
+     * Add the request body size field.
+     *
+     * @param size the body size.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addRequestBodySize(final long size) {
       requestBody.add(ECS_BYTES, size);
 
       return this;
     }
 
+    /**
+     * Add the request size field.
+     *
+     * @param size the request size.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addRequestSize(final long size) {
       request.add(ECS_BYTES, size);
 
       return this;
     }
 
+    /**
+     * Add the response body content field.
+     *
+     * @param content the content.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addResponseBodyContent(final String content) {
       responseBody.add(ECS_CONTENT, content(content));
 
       return this;
     }
 
+    /**
+     * Add the response body size field.
+     *
+     * @param size the body size.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addResponseBodySize(final long size) {
       responseBody.add(ECS_BYTES, size);
 
       return this;
     }
 
+    /**
+     * Add the response size field.
+     *
+     * @param size the response sizs.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addResponseSize(final long size) {
       response.add(ECS_BYTES, size);
 
       return this;
     }
 
+    /**
+     * Add the status code field.
+     *
+     * @param statusCode the status code.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addStatusCode(final long statusCode) {
       response.add(ECS_STATUS_CODE, statusCode);
 
       return this;
     }
 
+    /**
+     * Add the HTTP version field.
+     *
+     * @param version the HTTP version.
+     * @return The HTTP builder itself.
+     * @since 1.1
+     */
     public HttpBuilder addVersion(final String version) {
       http.add(ECS_VERSION, version);
 
       return this;
     }
 
+    /**
+     * Builds the HTTP message and adds it to the general ECS builder.
+     *
+     * @return The ECS builder.
+     * @since 1.1
+     */
     public Builder build() {
       builder.message.add(
           ECS_HTTP,
