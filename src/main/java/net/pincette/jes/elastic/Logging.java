@@ -40,6 +40,7 @@ public class Logging {
   private static final String COMMAND_ERROR = "COMMAND_ERROR";
   private static final String ECS_COMMAND = "command";
   private static final String EVENT = "event";
+  private static final String EXCEPTION = "exception";
   private static final String UNKNOWN = "unknown";
 
   private Logging() {}
@@ -77,7 +78,9 @@ public class Logging {
         .addDataset(ECS_COMMAND)
         .addOriginal(string(command, false))
         .addAction(command.getString(COMMAND))
-        .addIf(b -> errors, b -> b.addCode(COMMAND_ERROR))
+        .addIf(
+            b -> errors,
+            b -> b.addCode(command.containsKey(EXCEPTION) ? SEVERE.getName() : COMMAND_ERROR))
         .addIf(b -> errors, EventBuilder::addFailure)
         .build()
         .addIf(
@@ -260,6 +263,37 @@ public class Logging {
                 .withEnvironment(environment),
             uri,
             authorizationHeader));
+  }
+
+  /**
+   * Logs commands and events for <code>aggregate</code>. When the log level is at least <code>INFO
+   * </code> all documents appearing on the command and events streams are sent to the log topic.
+   * When the log level is at least <code>SEVERE</code> all commands with validation errors are sent
+   * to the log topic.
+   *
+   * @param aggregate the given aggregate.
+   * @param level the log level.
+   * @param serviceVersion the version of the service.
+   * @param logTopic the Kafka topic for logging.
+   * @since 1.1.2
+   */
+  public static void logKafka(
+      final Aggregate aggregate,
+      final Level level,
+      final String serviceVersion,
+      final String logTopic) {
+    if (level.intValue() <= INFO.intValue()) {
+      aggregate.commands().mapValues(v -> command(v, aggregate, serviceVersion)).to(logTopic);
+      aggregate.events().mapValues(v -> event(v, aggregate, serviceVersion)).to(logTopic);
+    }
+
+    if (level.intValue() <= SEVERE.intValue()) {
+      aggregate
+          .replies()
+          .filter((k, v) -> hasErrors(v))
+          .mapValues(v -> command(v, aggregate, serviceVersion))
+          .to(logTopic);
+    }
   }
 
   private static CompletionStage<Boolean> send(
