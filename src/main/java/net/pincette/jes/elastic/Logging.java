@@ -20,6 +20,7 @@ import static net.pincette.json.Validate.hasErrors;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -28,6 +29,9 @@ import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import net.pincette.jes.Aggregate;
 import net.pincette.jes.elastic.ElasticCommonSchema.EventBuilder;
+import net.pincette.jes.util.Kafka;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 /**
  * Elasticsearch logging utilities for JSON Event Sourcing.
@@ -261,8 +265,39 @@ public class Logging {
                 .withService(logger.getName())
                 .withServiceVersion(serviceVersion)
                 .withEnvironment(environment),
-            uri,
-            authorizationHeader));
+            json -> send(string(json), uri, authorizationHeader)));
+  }
+
+  /**
+   * Sends all log entries appearing in <code>logger</code> to an Elasticsearch index using the
+   * Elastic Common Schema.
+   *
+   * @param logger the given logger.
+   * @param level the log level.
+   * @param serviceVersion the version of the service.
+   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc.
+   * @param producer the Kafka producer.
+   * @param logTopic the Kafka topic to publish the log messages on.
+   * @since 1.1.3
+   */
+  public static void log(
+      final Logger logger,
+      final Level level,
+      final String serviceVersion,
+      final String environment,
+      final KafkaProducer<String, JsonObject> producer,
+      final String logTopic) {
+    logger.addHandler(
+        new LogHandler(
+            new ElasticCommonSchema()
+                .withApp(logger.getName())
+                .withLogLevel(level)
+                .withService(logger.getName())
+                .withServiceVersion(serviceVersion)
+                .withEnvironment(environment),
+            json ->
+                Kafka.send(
+                    producer, new ProducerRecord<>(logTopic, randomUUID().toString(), json))));
   }
 
   /**
@@ -317,15 +352,12 @@ public class Logging {
   }
 
   private static class LogHandler extends Handler {
-    private final String authorizationHeader;
-    private final String uri;
+    private final Consumer<JsonObject> send;
     private ElasticCommonSchema ecs;
 
-    private LogHandler(
-        final ElasticCommonSchema ecs, final String uri, final String authorizationHeader) {
+    private LogHandler(final ElasticCommonSchema ecs, final Consumer<JsonObject> send) {
       this.ecs = ecs;
-      this.uri = uri;
-      this.authorizationHeader = authorizationHeader;
+      this.send = send;
       setFilter(record -> record.getLevel().intValue() <= ecs.getLogLevel().intValue());
     }
 
@@ -347,22 +379,21 @@ public class Logging {
           .orElseGet(record::getMessage);
     }
 
-    private String logMessage(final LogRecord record) {
-      return string(
-          ecs.builder()
-              .addMessage(message(record))
-              .addTimestamp(ofEpochMilli(record.getMillis()))
-              .addEvent()
-              .addCreated(ofEpochMilli(record.getMillis()))
-              .addOriginal(message(record))
-              .addSequence(record.getSequenceNumber())
-              .addAction(action(record))
-              .addSeverity(record.getLevel().intValue())
-              .build()
-              .addIf(
-                  b -> record.getThrown() != null,
-                  b -> b.addError().addThrowable(record.getThrown()).build())
-              .build());
+    private JsonObject logMessage(final LogRecord record) {
+      return ecs.builder()
+          .addMessage(message(record))
+          .addTimestamp(ofEpochMilli(record.getMillis()))
+          .addEvent()
+          .addCreated(ofEpochMilli(record.getMillis()))
+          .addOriginal(message(record))
+          .addSequence(record.getSequenceNumber())
+          .addAction(action(record))
+          .addSeverity(record.getLevel().intValue())
+          .build()
+          .addIf(
+              b -> record.getThrown() != null,
+              b -> b.addError().addThrowable(record.getThrown()).build())
+          .build();
     }
 
     @Override
@@ -377,7 +408,7 @@ public class Logging {
 
     @Override
     public void publish(final LogRecord record) {
-      send(logMessage(record), uri, authorizationHeader);
+      send.accept(logMessage(record));
     }
   }
 }
