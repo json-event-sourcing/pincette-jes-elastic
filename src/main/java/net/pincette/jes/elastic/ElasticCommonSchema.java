@@ -11,7 +11,9 @@ import static net.pincette.util.Util.getStackTrace;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.logging.Level;
 import javax.json.JsonArrayBuilder;
@@ -21,6 +23,8 @@ import javax.json.JsonObjectBuilder;
 /**
  * This lets you build JSON messages according to the Elastic Common Schema.
  *
+ * @see <a href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html">ECS Field
+ *     Reference</a>
  * @author Werner Donn\u00e9
  * @since 1.1
  */
@@ -36,13 +40,17 @@ public class ElasticCommonSchema {
   private static final String ECS_CONTENT = "content";
   private static final String ECS_CREATED = "created";
   private static final String ECS_DATASET = "dataset";
+  private static final String ECS_DOMAIN = "domain";
   private static final String ECS_DURATION = "duration";
   private static final String ECS_END = "end";
   private static final String ECS_ENVIRONMENT = "environment";
   private static final String ECS_ERROR = "error";
   private static final String ECS_EVENT = "event";
   private static final String ECS_EXCEPTION = "exception";
+  private static final String ECS_EXTENSION = "extension";
   private static final String ECS_FAILURE = "failure";
+  private static final String ECS_FRAGMENT = "fragment";
+  private static final String ECS_FULL = "full";
   private static final String ECS_HASH = "hash";
   private static final String ECS_HOST = "host";
   private static final String ECS_HTTP = "http";
@@ -59,12 +67,21 @@ public class ElasticCommonSchema {
   private static final String ECS_ORIGINAL = "original";
   private static final String ECS_OS = "os";
   private static final String ECS_OUTCOME = "outcome";
+
+  @SuppressWarnings("squid:S2068") // Field name.
+  private static final String ECS_PASSWORD = "password";
+
+  private static final String ECS_PATH = "path";
+  private static final String ECS_PORT = "port";
   private static final String ECS_PROVIDER = "provider";
+  private static final String ECS_QUERY = "query";
   private static final String ECS_REFERRER = "referrer";
+  private static final String ECS_REGISTERED_DOMAIN = "registered_domain";
   private static final String ECS_REQUEST = "request";
   private static final String ECS_RESPONSE = "response";
   private static final String ECS_RISK_SCORE = "risk_score";
   private static final String ECS_RISK_SCORE_NORM = "risk_score_norm";
+  private static final String ECS_SCHEME = "scheme";
   private static final String ECS_SEQUENCE = "sequence";
   private static final String ECS_SERVICE = "service";
   private static final String ECS_SEVERITY = "severity";
@@ -76,9 +93,12 @@ public class ElasticCommonSchema {
   private static final String ECS_TEXT = "text";
   private static final String ECS_TIMESTAMP = "@timestamp";
   private static final String ECS_TIMEZONE = "timezone";
+  private static final String ECS_TOP_LEVEL_DOMAIN = "top_level_domain";
   private static final String ECS_TRACE = "trace";
   private static final String ECS_TYPE = "type";
+  private static final String ECS_URL = "url";
   private static final String ECS_USER = "user";
+  private static final String ECS_USERNAME = "username";
   private static final String ECS_VERSION = "version";
   private static final String ECS_WEB = "web";
   private static final String UNKNOWN = "unknown";
@@ -115,6 +135,11 @@ public class ElasticCommonSchema {
    */
   public static boolean isEcs(final JsonObject json) {
     return getValue(json, "/" + ECS + "/" + ECS_VERSION).isPresent();
+  }
+
+  @SuppressWarnings("squid:S3398") // Not possible with static methods in non-static subclasses.
+  private static String skipFirst(final String s, final char first) {
+    return s.length() > 0 && s.charAt(0) == first ? s.substring(1) : s;
   }
 
   /**
@@ -327,6 +352,19 @@ public class ElasticCommonSchema {
     }
 
     /**
+     * Add something conditionally.
+     *
+     * @param value the function that produces a value.
+     * @param add the function to add something.
+     * @return The builder itself.
+     * @since 1.2
+     */
+    public <T> Builder addIf(
+        final Supplier<Optional<T>> value, final BiFunction<Builder, T, Builder> add) {
+      return value.get().map(v -> add.apply(this, v)).orElse(this);
+    }
+
+    /**
      * Add the message field.
      *
      * @param message the message itself.
@@ -357,6 +395,16 @@ public class ElasticCommonSchema {
      */
     public Builder addTrace(final String id) {
       return add(ECS_TRACE, ecsTrace(id));
+    }
+
+    /**
+     * Prepares the addition of a URL object.
+     *
+     * @return A new URL builder.
+     * @since 1.2
+     */
+    public UrlBuilder addUrl() {
+      return new UrlBuilder(this);
     }
 
     /**
@@ -468,6 +516,19 @@ public class ElasticCommonSchema {
     public ErrorBuilder addIf(
         final Predicate<ErrorBuilder> test, final UnaryOperator<ErrorBuilder> add) {
       return test.test(this) ? add.apply(this) : this;
+    }
+
+    /**
+     * Add something conditionally.
+     *
+     * @param value the function that produces a value.
+     * @param add the function to add something.
+     * @return The error builder itself.
+     * @since 1.2
+     */
+    public <T> ErrorBuilder addIf(
+        final Supplier<Optional<T>> value, final BiFunction<ErrorBuilder, T, ErrorBuilder> add) {
+      return value.get().map(v -> add.apply(this, v)).orElse(this);
     }
 
     /**
@@ -661,6 +722,19 @@ public class ElasticCommonSchema {
     }
 
     /**
+     * Add something conditionally.
+     *
+     * @param value the function that produces a value.
+     * @param add the function to add something.
+     * @return The event builder itself.
+     * @since 1.2
+     */
+    public <T> EventBuilder addIf(
+        final Supplier<Optional<T>> value, final BiFunction<EventBuilder, T, EventBuilder> add) {
+      return value.get().map(v -> add.apply(this, v)).orElse(this);
+    }
+
+    /**
      * Add the ingested field.
      *
      * @param ingested the ingestion time.
@@ -821,6 +895,19 @@ public class ElasticCommonSchema {
     }
 
     /**
+     * Add something conditionally.
+     *
+     * @param value the function that produces a value.
+     * @param add the function to add something.
+     * @return The HTTP builder itself.
+     * @since 1.2
+     */
+    public <T> HttpBuilder addIf(
+        final Supplier<Optional<T>> value, final BiFunction<HttpBuilder, T, HttpBuilder> add) {
+      return value.get().map(v -> add.apply(this, v)).orElse(this);
+    }
+
+    /**
      * Add the method field.
      *
      * @param method the method.
@@ -961,6 +1048,226 @@ public class ElasticCommonSchema {
           ECS_HTTP,
           http.add(ECS_REQUEST, request.add(ECS_BODY, requestBody))
               .add(ECS_RESPONSE, response.add(ECS_BODY, responseBody)));
+
+      return builder;
+    }
+  }
+
+  /**
+   * The URL message builder.
+   *
+   * @since 1.2
+   */
+  public class UrlBuilder {
+    private Builder builder;
+    private JsonObjectBuilder url = createObjectBuilder();
+
+    private UrlBuilder(final Builder builder) {
+      this.builder = builder;
+    }
+
+    /**
+     * Add the domain.
+     *
+     * @param domain the domain.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addDomain(final String domain) {
+      url.add(ECS_DOMAIN, domain);
+
+      return this;
+    }
+
+    /**
+     * Add the extension field.
+     *
+     * @param extension the extension.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addExtension(final String extension) {
+      url.add(ECS_EXTENSION, skipFirst(extension, '.'));
+
+      return this;
+    }
+
+    /**
+     * Add the fragment field.
+     *
+     * @param fragment the fragment.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addFragment(final String fragment) {
+      url.add(ECS_FRAGMENT, skipFirst(fragment, '#'));
+
+      return this;
+    }
+
+    /**
+     * Add the full URL field.
+     *
+     * @param fullUrl the full URL.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addFull(final String fullUrl) {
+      url.add(ECS_FULL, fullUrl);
+
+      return this;
+    }
+
+    /**
+     * Add something conditionally.
+     *
+     * @param test the test that should be passed.
+     * @param add the function to add something.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addIf(final Predicate<UrlBuilder> test, final UnaryOperator<UrlBuilder> add) {
+      return test.test(this) ? add.apply(this) : this;
+    }
+
+    /**
+     * Add something conditionally.
+     *
+     * @param value the function that produces a value.
+     * @param add the function to add something.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public <T> UrlBuilder addIf(
+        final Supplier<Optional<T>> value, final BiFunction<UrlBuilder, T, UrlBuilder> add) {
+      return value.get().map(v -> add.apply(this, v)).orElse(this);
+    }
+
+    /**
+     * Add the original field.
+     *
+     * @param original the original URL.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addOriginal(final String original) {
+      url.add(ECS_ORIGINAL, original);
+
+      return this;
+    }
+
+    /**
+     * Add the password field.
+     *
+     * @param password the password.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addPassword(final String password) {
+      url.add(ECS_PASSWORD, password);
+
+      return this;
+    }
+
+    /**
+     * Add the path field.
+     *
+     * @param path the path.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addPath(final String path) {
+      url.add(ECS_PATH, path);
+
+      return this;
+    }
+
+    /**
+     * Add the port field.
+     *
+     * @param port the port.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addPort(final int port) {
+      url.add(ECS_PORT, port);
+
+      return this;
+    }
+
+    /**
+     * Add the query field.
+     *
+     * @param query the query.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addQuery(final String query) {
+      url.add(ECS_QUERY, skipFirst(query, '?'));
+
+      return this;
+    }
+
+    /**
+     * Add the registered domain field.
+     *
+     * @param registeredDomain the registered domain.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addRegisteredDomain(final String registeredDomain) {
+      url.add(ECS_REGISTERED_DOMAIN, skipFirst(registeredDomain, '.'));
+
+      return this;
+    }
+
+    /**
+     * Add the scheme field.
+     *
+     * @param scheme the scheme.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addScheme(final String scheme) {
+      url.add(ECS_SCHEME, scheme);
+
+      return this;
+    }
+
+    /**
+     * Add the top level domain field.
+     *
+     * @param topLevelDomain the top level domain.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addTopLevelDomain(final String topLevelDomain) {
+      url.add(ECS_TOP_LEVEL_DOMAIN, skipFirst(topLevelDomain, '.'));
+
+      return this;
+    }
+
+    /**
+     * Add the username field.
+     *
+     * @param username the username.
+     * @return The URL builder itself.
+     * @since 1.2
+     */
+    public UrlBuilder addUsername(final String userame) {
+      url.add(ECS_USERNAME, userame);
+
+      return this;
+    }
+
+    /**
+     * Builds the URL message and adds it to the general ECS builder.
+     *
+     * @return The ECS builder.
+     * @since 1.2
+     */
+    public Builder build() {
+      builder.message.add(ECS_URL, url);
 
       return builder;
     }
