@@ -356,6 +356,7 @@ public class ElasticCommonSchema {
      *
      * @param value the function that produces a value.
      * @param add the function to add something.
+     * @param <T> the value type.
      * @return The builder itself.
      * @since 1.2
      */
@@ -523,6 +524,7 @@ public class ElasticCommonSchema {
      *
      * @param value the function that produces a value.
      * @param add the function to add something.
+     * @param <T> the value type.
      * @return The error builder itself.
      * @since 1.2
      */
@@ -726,6 +728,7 @@ public class ElasticCommonSchema {
      *
      * @param value the function that produces a value.
      * @param add the function to add something.
+     * @param <T> the value type.
      * @return The event builder itself.
      * @since 1.2
      */
@@ -899,6 +902,7 @@ public class ElasticCommonSchema {
      *
      * @param value the function that produces a value.
      * @param add the function to add something.
+     * @param <T> the value type.
      * @return The HTTP builder itself.
      * @since 1.2
      */
@@ -1135,6 +1139,7 @@ public class ElasticCommonSchema {
      *
      * @param value the function that produces a value.
      * @param add the function to add something.
+     * @param <T> the value type.
      * @return The URL builder itself.
      * @since 1.2
      */
@@ -1254,8 +1259,8 @@ public class ElasticCommonSchema {
      * @return The URL builder itself.
      * @since 1.2
      */
-    public UrlBuilder addUsername(final String userame) {
-      url.add(ECS_USERNAME, userame);
+    public UrlBuilder addUsername(final String username) {
+      url.add(ECS_USERNAME, username);
 
       return this;
     }
