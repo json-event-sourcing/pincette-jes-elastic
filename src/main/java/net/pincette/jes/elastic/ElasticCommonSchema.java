@@ -229,7 +229,7 @@ public class ElasticCommonSchema {
   }
 
   /**
-   * Sets the log level property.
+   * Sets the default log level.
    *
    * @param logLevel the property.
    * @return The object itself.
@@ -366,6 +366,17 @@ public class ElasticCommonSchema {
     }
 
     /**
+     * Add the log level field.
+     *
+     * @param level the log level.
+     * @return The builder itself.
+     * @since 1.2.1
+     */
+    public Builder addLogLevel(final Level level) {
+      return add(ECS_LOG, ecsLog(level));
+    }
+
+    /**
      * Add the message field.
      *
      * @param message the message itself.
@@ -426,7 +437,7 @@ public class ElasticCommonSchema {
           .add(ECS_AGENT, ecsService())
           .add(ECS_TAGS, ecsTags(new String[] {environment}))
           .add(ECS_LABELS, ecsLabels())
-          .add(ECS_LOG, ecsLog())
+          .add(ECS_LOG, ecsLog(logLevel))
           .add(ECS, ecsVersion())
           .add(ECS_HOST, ecsHost(null));
     }
@@ -441,8 +452,8 @@ public class ElasticCommonSchema {
           .add(ECS_ENVIRONMENT, environment != null ? environment : UNKNOWN);
     }
 
-    private JsonObjectBuilder ecsLog() {
-      return createObjectBuilder().add(ECS_LEVEL, logLevel != null ? logLevel.toString() : UNKNOWN);
+    private JsonObjectBuilder ecsLog(final Level level) {
+      return createObjectBuilder().add(ECS_LEVEL, level != null ? level.toString() : UNKNOWN);
     }
 
     private JsonObjectBuilder ecsService() {

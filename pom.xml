@@ -7,7 +7,7 @@
   <groupId>net.pincette</groupId>
   <artifactId>pincette-jes-elastic</artifactId>
   <packaging>jar</packaging>
-  <version>1.2</version>
+  <version>1.2.1</version>
   <name>pincette-jes-elastic</name>
   <description>Elasticsearch Utilities for pincette-jes</description>
   <url>https://github.com/json-event-sourcing/pincette-jes-elastic</url>
