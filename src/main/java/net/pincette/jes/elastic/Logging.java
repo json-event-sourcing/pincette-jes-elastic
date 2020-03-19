@@ -383,12 +383,14 @@ public class Logging {
       return ecs.builder()
           .addMessage(message(record))
           .addTimestamp(ofEpochMilli(record.getMillis()))
+          .addLogLevel(record.getLevel())
           .addEvent()
           .addCreated(ofEpochMilli(record.getMillis()))
           .addOriginal(message(record))
           .addSequence(record.getSequenceNumber())
           .addAction(action(record))
           .addSeverity(record.getLevel().intValue())
+          .addIf(b -> record.getThrown() != null, EventBuilder::addFailure)
           .build()
           .addIf(
               b -> record.getThrown() != null,
