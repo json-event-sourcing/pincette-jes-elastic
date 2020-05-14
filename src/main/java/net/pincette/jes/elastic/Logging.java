@@ -228,6 +228,19 @@ public class Logging {
    * Elastic Common Schema.
    *
    * @param logger the given logger.
+   * @param uri the URI of the Elasticsearch index.
+   * @param authorizationHeader the value for the Authorization header on each request.
+   * @since 1.2.4
+   */
+  public static void log(final Logger logger, final String uri, final String authorizationHeader) {
+    log(logger, logger.getLevel(), null, null, uri, authorizationHeader);
+  }
+
+  /**
+   * Sends all log entries appearing in <code>logger</code> to an Elasticsearch index using the
+   * Elastic Common Schema.
+   *
+   * @param logger the given logger.
    * @param level the log level.
    * @param uri the URI of the Elasticsearch index.
    * @param authorizationHeader the value for the Authorization header on each request.
@@ -266,6 +279,26 @@ public class Logging {
                 .withServiceVersion(serviceVersion)
                 .withEnvironment(environment),
             json -> send(string(json), uri, authorizationHeader)));
+  }
+
+  /**
+   * Sends all log entries appearing in <code>logger</code> to an Elasticsearch index using the
+   * Elastic Common Schema.
+   *
+   * @param logger the given logger.
+   * @param serviceVersion the version of the service.
+   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc.
+   * @param producer the Kafka producer.
+   * @param logTopic the Kafka topic to publish the log messages on.
+   * @since 1.2.4
+   */
+  public static void log(
+      final Logger logger,
+      final String serviceVersion,
+      final String environment,
+      final KafkaProducer<String, JsonObject> producer,
+      final String logTopic) {
+    log(logger, logger.getLevel(), serviceVersion, environment, producer, logTopic);
   }
 
   /**
