@@ -7,7 +7,7 @@
   <groupId>net.pincette</groupId>
   <artifactId>pincette-jes-elastic</artifactId>
   <packaging>jar</packaging>
-  <version>1.2.6</version>
+  <version>1.2.7</version>
   <name>pincette-jes-elastic</name>
   <description>Elasticsearch Utilities for pincette-jes</description>
   <url>https://github.com/json-event-sourcing/pincette-jes-elastic</url>
@@ -44,8 +44,8 @@
   </licenses>
 
   <properties>
-    <maven.compiler.target>1.8</maven.compiler.target>
-    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>9</maven.compiler.target>
+    <maven.compiler.source>9</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
@@ -53,22 +53,22 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-jes</artifactId>
-      <version>1.1.5</version>
+      <version>1.2.3</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-jes-util</artifactId>
-      <version>1.3.2</version>
+      <version>1.3.10</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-common</artifactId>
-      <version>1.7.4</version>
+      <version>1.7.7</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-json</artifactId>
-      <version>1.3.5</version>
+      <version>1.3.8</version>
     </dependency>
     <dependency>
       <groupId>javax.json</groupId>
@@ -133,6 +133,48 @@
             <link>https://www.javadoc.io/doc/net.pincette/pincette-json/1.2.1/</link>
             <link>https://www.javadoc.io/doc/javax.json/javax.json-api/1.1.4/</link>
           </links>
+          <sourceFileExcludes>
+            <sourceFileExclude>**/module-info.java</sourceFileExclude>
+          </sourceFileExcludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <executions>
+          <execution>
+            <id>default-compile</id>
+            <configuration>
+              <!-- compile everything to ensure module-info contains right entries -->
+              <!-- required when JAVA_HOME is JDK 8 or below -->
+              <jdkToolchain>
+                <version>9</version>
+              </jdkToolchain>
+              <release>9</release>
+            </configuration>
+          </execution>
+          <execution>
+            <id>base-compile</id>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <!-- recompile everything for target VM except the module-info.java -->
+            <configuration>
+              <excludes>
+                <exclude>module-info.java</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+        </executions>
+        <!-- defaults for compile and testCompile -->
+        <configuration>
+          <!-- jdkToolchain required when JAVA_HOME is JDK 9 or above -->
+          <jdkToolchain>
+            <version>[1.8,9)</version>
+          </jdkToolchain>
+          <source>1.8</source>
+          <target>1.8</target>
         </configuration>
       </plugin>
     </plugins>
