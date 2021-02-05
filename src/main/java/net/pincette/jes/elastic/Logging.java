@@ -2,6 +2,7 @@ package net.pincette.jes.elastic;
 
 import static java.text.MessageFormat.format;
 import static java.time.Instant.ofEpochMilli;
+import static java.util.Arrays.stream;
 import static java.util.UUID.randomUUID;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.SEVERE;
@@ -28,6 +29,7 @@ import java.util.logging.Logger;
 import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import net.pincette.jes.Aggregate;
+import net.pincette.jes.elastic.ElasticCommonSchema.Builder;
 import net.pincette.jes.elastic.ElasticCommonSchema.EventBuilder;
 import net.pincette.jes.util.Kafka;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -45,6 +47,7 @@ public class Logging {
   private static final String ECS_COMMAND = "command";
   private static final String EVENT = "event";
   private static final String EXCEPTION = "exception";
+  private static final String TRACE_ID = "traceId";
   private static final String UNKNOWN = "unknown";
 
   private Logging() {}
@@ -253,7 +256,8 @@ public class Logging {
 
   /**
    * Sends all log entries appearing in <code>logger</code> to an Elasticsearch index using the
-   * Elastic Common Schema.
+   * Elastic Common Schema. If the log record has a parameter array with an extra parameter of the
+   * form <code>traceId=value</code> then the value will be set as the trace ID of the log event.
    *
    * @param logger the given logger.
    * @param level the log level.
@@ -303,7 +307,8 @@ public class Logging {
 
   /**
    * Sends all log entries appearing in <code>logger</code> to an Elasticsearch index using the
-   * Elastic Common Schema.
+   * Elastic Common Schema. If the log record has a parameter array with an extra parameter of the
+   * form <code>traceId=value</code> then the value will be set as the trace ID of the log event.
    *
    * @param logger the given logger.
    * @param level the log level.
@@ -386,7 +391,7 @@ public class Logging {
 
   private static class LogHandler extends Handler {
     private final Consumer<JsonObject> send;
-    private ElasticCommonSchema ecs;
+    private final ElasticCommonSchema ecs;
 
     private LogHandler(final ElasticCommonSchema ecs, final Consumer<JsonObject> send) {
       this.ecs = ecs;
@@ -401,8 +406,21 @@ public class Logging {
 
     private static String message(final LogRecord record) {
       return Optional.ofNullable(record.getParameters())
-          .map(parameters -> format(unformattedMessage(record), parameters))
+          .map(parameters -> format(unformattedMessage(record), removeTraceId(parameters)))
           .orElseGet(() -> unformattedMessage(record));
+    }
+
+    private static Object[] removeTraceId(final Object[] parameters) {
+      return stream(parameters).filter(p -> !p.toString().startsWith(TRACE_ID + "=")).toArray();
+    }
+
+    private static Optional<String> traceId(final LogRecord record) {
+      return stream(record.getParameters())
+          .map(Object::toString)
+          .map(s -> s.split("="))
+          .filter(parts -> parts.length == 2 && parts[0].equals(TRACE_ID))
+          .map(parts -> parts[1])
+          .findFirst();
     }
 
     private static String unformattedMessage(final LogRecord record) {
@@ -417,13 +435,16 @@ public class Logging {
           .addMessage(message(record))
           .addTimestamp(ofEpochMilli(record.getMillis()))
           .addLogLevel(record.getLevel())
+          .addIf(() -> traceId(record), Builder::addTrace)
           .addEvent()
           .addCreated(ofEpochMilli(record.getMillis()))
           .addOriginal(message(record))
           .addSequence(record.getSequenceNumber())
           .addAction(action(record))
           .addSeverity(record.getLevel().intValue())
-          .addIf(b -> record.getThrown() != null, EventBuilder::addFailure)
+          .addIf(
+              b -> record.getThrown() != null || record.getLevel().equals(SEVERE),
+              EventBuilder::addFailure)
           .build()
           .addIf(
               b -> record.getThrown() != null,
