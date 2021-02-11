@@ -7,7 +7,7 @@
   <groupId>net.pincette</groupId>
   <artifactId>pincette-jes-elastic</artifactId>
   <packaging>jar</packaging>
-  <version>1.2.8</version>
+  <version>1.2.9</version>
   <name>pincette-jes-elastic</name>
   <description>Elasticsearch Utilities for pincette-jes</description>
   <url>https://github.com/json-event-sourcing/pincette-jes-elastic</url>
@@ -71,7 +71,7 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-json</artifactId>
-      <version>1.3.12</version>
+      <version>1.3.13</version>
     </dependency>
     <dependency>
       <groupId>javax.json</groupId>
@@ -121,9 +121,9 @@
           <links>
             <link>http://docs.oracle.com/javase/8/docs/api/</link>
             <link>https://www.javadoc.io/doc/net.pincette/pincette-jes/1.2.5/</link>
-            <link>https://www.javadoc.io/doc/net.pincette/pincette-jes-util/1.3.10/</link>
+            <link>https://www.javadoc.io/doc/net.pincette/pincette-jes-util/1.3.11/</link>
             <link>https://www.javadoc.io/doc/net.pincette/pincette-common/1.7.8/</link>
-            <link>https://www.javadoc.io/doc/net.pincette/pincette-json/1.3.10/</link>
+            <link>https://www.javadoc.io/doc/net.pincette/pincette-json/1.3.12/</link>
             <link>https://www.javadoc.io/doc/javax.json/javax.json-api/1.1.4/</link>
           </links>
           <sourceFileExcludes>
@@ -168,6 +168,30 @@
           </jdkToolchain>
           <source>1.8</source>
           <target>1.8</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>4.0.3</version>
+        <executions>
+          <execution>
+            <id>get-the-git-infos</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+            <phase>initialize</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+          <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties
+          </generateGitPropertiesFilename>
+          <includeOnlyProperties>
+            <includeOnlyProperty>^git.build.(time|version)$</includeOnlyProperty>
+            <includeOnlyProperty>^git.commit.id.(abbrev|full)$</includeOnlyProperty>
+          </includeOnlyProperties>
+          <commitIdGenerationMode>full</commitIdGenerationMode>
         </configuration>
       </plugin>
     </plugins>

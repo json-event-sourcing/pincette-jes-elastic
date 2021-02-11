@@ -3,6 +3,7 @@ package net.pincette.jes.elastic;
 import static java.text.MessageFormat.format;
 import static java.time.Instant.ofEpochMilli;
 import static java.util.Arrays.stream;
+import static java.util.Optional.ofNullable;
 import static java.util.UUID.randomUUID;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.SEVERE;
@@ -415,12 +416,15 @@ public class Logging {
     }
 
     private static Optional<String> traceId(final LogRecord record) {
-      return stream(record.getParameters())
-          .map(Object::toString)
-          .map(s -> s.split("="))
-          .filter(parts -> parts.length == 2 && parts[0].equals(TRACE_ID))
-          .map(parts -> parts[1])
-          .findFirst();
+      return ofNullable(record.getParameters())
+          .flatMap(
+              parameters ->
+                  stream(parameters)
+                      .map(Object::toString)
+                      .map(s -> s.split("="))
+                      .filter(parts -> parts.length == 2 && parts[0].equals(TRACE_ID))
+                      .map(parts -> parts[1])
+                      .findFirst());
     }
 
     private static String unformattedMessage(final LogRecord record) {
