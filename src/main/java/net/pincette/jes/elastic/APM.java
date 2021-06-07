@@ -14,13 +14,13 @@ import static net.pincette.json.JsonUtil.string;
 import static net.pincette.util.Collections.intersection;
 import static net.pincette.util.Pair.pair;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.json.JsonObject;
@@ -195,7 +195,7 @@ public class APM {
   }
 
   private static String generateId() {
-    return toHexString(new Random().nextLong());
+    return toHexString(new SecureRandom().nextLong());
   }
 
   private static Set<String> getAllSteps(final List<JsonObject> steps) {

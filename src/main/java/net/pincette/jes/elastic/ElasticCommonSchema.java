@@ -273,7 +273,7 @@ public class ElasticCommonSchema {
    * @since 1.1
    */
   public class Builder {
-    private JsonObjectBuilder message = ecsGeneral();
+    private final JsonObjectBuilder message = ecsGeneral();
 
     private Builder() {}
 
@@ -484,8 +484,8 @@ public class ElasticCommonSchema {
    * @since 1.1
    */
   public class ErrorBuilder {
-    private Builder builder;
-    private JsonObjectBuilder error = createObjectBuilder();
+    private final Builder builder;
+    private final JsonObjectBuilder error = createObjectBuilder();
 
     private ErrorBuilder(final Builder builder) {
       this.builder = builder;
@@ -592,8 +592,8 @@ public class ElasticCommonSchema {
    * @since 1.1
    */
   public class EventBuilder {
-    private Builder builder;
-    private JsonObjectBuilder event =
+    private final Builder builder;
+    private final JsonObjectBuilder event =
         createObjectBuilder()
             .add(ECS_CATEGORY, ECS_WEB)
             .add(ECS_CREATED, now().toString())
@@ -884,12 +884,12 @@ public class ElasticCommonSchema {
    * @since 1.1
    */
   public class HttpBuilder {
-    private Builder builder;
-    private JsonObjectBuilder http = createObjectBuilder().add(ECS_VERSION, "1.1");
-    private JsonObjectBuilder request = createObjectBuilder();
-    private JsonObjectBuilder requestBody = createObjectBuilder();
-    private JsonObjectBuilder response = createObjectBuilder();
-    private JsonObjectBuilder responseBody = createObjectBuilder();
+    private final Builder builder;
+    private final JsonObjectBuilder http = createObjectBuilder().add(ECS_VERSION, "1.1");
+    private final JsonObjectBuilder request = createObjectBuilder();
+    private final JsonObjectBuilder requestBody = createObjectBuilder();
+    private final JsonObjectBuilder response = createObjectBuilder();
+    private final JsonObjectBuilder responseBody = createObjectBuilder();
 
     private HttpBuilder(final Builder builder) {
       this.builder = builder;
@@ -1074,8 +1074,8 @@ public class ElasticCommonSchema {
    * @since 1.2
    */
   public class UrlBuilder {
-    private Builder builder;
-    private JsonObjectBuilder url = createObjectBuilder();
+    private final Builder builder;
+    private final JsonObjectBuilder url = createObjectBuilder();
 
     private UrlBuilder(final Builder builder) {
       this.builder = builder;

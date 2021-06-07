@@ -397,26 +397,26 @@ public class Logging {
     private LogHandler(final ElasticCommonSchema ecs, final Consumer<JsonObject> send) {
       this.ecs = ecs;
       this.send = send;
-      setFilter(record -> record.getLevel().intValue() <= ecs.getLogLevel().intValue());
+      setFilter(logRecord -> logRecord.getLevel().intValue() <= ecs.getLogLevel().intValue());
     }
 
-    private static String action(final LogRecord record) {
-      return Optional.ofNullable(record.getSourceClassName()).map(name -> name + ".").orElse("")
-          + Optional.ofNullable(record.getSourceMethodName()).orElse("Unknown method");
+    private static String action(final LogRecord logRecord) {
+      return Optional.ofNullable(logRecord.getSourceClassName()).map(name -> name + ".").orElse("")
+          + Optional.ofNullable(logRecord.getSourceMethodName()).orElse("Unknown method");
     }
 
-    private static String message(final LogRecord record) {
-      return Optional.ofNullable(record.getParameters())
-          .map(parameters -> format(unformattedMessage(record), removeTraceId(parameters)))
-          .orElseGet(() -> unformattedMessage(record));
+    private static String message(final LogRecord logRecord) {
+      return Optional.ofNullable(logRecord.getParameters())
+          .map(parameters -> format(unformattedMessage(logRecord), removeTraceId(parameters)))
+          .orElseGet(() -> unformattedMessage(logRecord));
     }
 
     private static Object[] removeTraceId(final Object[] parameters) {
       return stream(parameters).filter(p -> !p.toString().startsWith(TRACE_ID + "=")).toArray();
     }
 
-    private static Optional<String> traceId(final LogRecord record) {
-      return ofNullable(record.getParameters())
+    private static Optional<String> traceId(final LogRecord logRecord) {
+      return ofNullable(logRecord.getParameters())
           .flatMap(
               parameters ->
                   stream(parameters)
@@ -427,32 +427,32 @@ public class Logging {
                       .findFirst());
     }
 
-    private static String unformattedMessage(final LogRecord record) {
-      return Optional.ofNullable(record.getResourceBundle())
-          .filter(bundle -> bundle.containsKey(record.getMessage()))
-          .map(bundle -> bundle.getString(record.getMessage()))
-          .orElseGet(record::getMessage);
+    private static String unformattedMessage(final LogRecord logRecord) {
+      return Optional.ofNullable(logRecord.getResourceBundle())
+          .filter(bundle -> bundle.containsKey(logRecord.getMessage()))
+          .map(bundle -> bundle.getString(logRecord.getMessage()))
+          .orElseGet(logRecord::getMessage);
     }
 
-    private JsonObject logMessage(final LogRecord record) {
+    private JsonObject logMessage(final LogRecord logRecord) {
       return ecs.builder()
-          .addMessage(message(record))
-          .addTimestamp(ofEpochMilli(record.getMillis()))
-          .addLogLevel(record.getLevel())
-          .addIf(() -> traceId(record), Builder::addTrace)
+          .addMessage(message(logRecord))
+          .addTimestamp(ofEpochMilli(logRecord.getMillis()))
+          .addLogLevel(logRecord.getLevel())
+          .addIf(() -> traceId(logRecord), Builder::addTrace)
           .addEvent()
-          .addCreated(ofEpochMilli(record.getMillis()))
-          .addOriginal(message(record))
-          .addSequence(record.getSequenceNumber())
-          .addAction(action(record))
-          .addSeverity(record.getLevel().intValue())
+          .addCreated(ofEpochMilli(logRecord.getMillis()))
+          .addOriginal(message(logRecord))
+          .addSequence(logRecord.getSequenceNumber())
+          .addAction(action(logRecord))
+          .addSeverity(logRecord.getLevel().intValue())
           .addIf(
-              b -> record.getThrown() != null || record.getLevel().equals(SEVERE),
+              b -> logRecord.getThrown() != null || logRecord.getLevel().equals(SEVERE),
               EventBuilder::addFailure)
           .build()
           .addIf(
-              b -> record.getThrown() != null,
-              b -> b.addError().addThrowable(record.getThrown()).build())
+              b -> logRecord.getThrown() != null,
+              b -> b.addError().addThrowable(logRecord.getThrown()).build())
           .build();
     }
 
@@ -467,8 +467,8 @@ public class Logging {
     }
 
     @Override
-    public void publish(final LogRecord record) {
-      send.accept(logMessage(record));
+    public void publish(final LogRecord logRecord) {
+      send.accept(logMessage(logRecord));
     }
   }
 }
