@@ -218,7 +218,7 @@ public class ElasticCommonSchema {
   /**
    * Sets the environment property.
    *
-   * @param environment the property.
+   * @param environment the property. It may be <code>null</code>.
    * @return The object itself.
    * @since 1.1
    */
@@ -435,7 +435,7 @@ public class ElasticCommonSchema {
           .add(ECS_TIMESTAMP, now().toString())
           .add(ECS_SERVICE, ecsService())
           .add(ECS_AGENT, ecsService())
-          .add(ECS_TAGS, ecsTags(new String[] {environment}))
+          .add(ECS_TAGS, ecsTags(environment != null ? new String[] {environment} : new String[0]))
           .add(ECS_LABELS, ecsLabels())
           .add(ECS_LOG, ecsLog(logLevel))
           .add(ECS, ecsVersion())

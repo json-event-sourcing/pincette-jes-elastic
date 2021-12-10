@@ -26,7 +26,7 @@ public class Aggregates {
    * followed by the suffix "-<code>environment</code>".
    *
    * @param aggregates the aggregate stream.
-   * @param environment the environment name, e.g. "tst", "acc", "dev".
+   * @param environment the environment name, e.g. "tst", "acc", "dev". It may be <code>null</code>.
    * @param uri the Elasticsearch endpoint.
    * @param authorizationHeader the value for the Authorization header on each request.
    * @since 1.0
@@ -56,8 +56,7 @@ public class Aggregates {
     return uri
         + (uri.endsWith("/") ? "" : "/")
         + aggregate.getString(TYPE)
-        + "-"
-        + environment
+        + (environment != null ? ("-" + environment) : "")
         + "/_doc/"
         + aggregate.getString(ID);
   }

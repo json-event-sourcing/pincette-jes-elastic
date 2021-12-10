@@ -263,7 +263,8 @@ public class Logging {
    * @param logger the given logger.
    * @param level the log level.
    * @param serviceVersion the version of the service.
-   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc.
+   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc. It may be
+   *     <code>null</code>.
    * @param uri the URI of the Elasticsearch index.
    * @param authorizationHeader the value for the Authorization header on each request.
    * @since 1.0
@@ -292,7 +293,8 @@ public class Logging {
    *
    * @param logger the given logger.
    * @param serviceVersion the version of the service.
-   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc.
+   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc. It may be
+   *     <code>null</code>.
    * @param producer the Kafka producer.
    * @param logTopic the Kafka topic to publish the log messages on.
    * @since 1.2.4
@@ -314,7 +316,8 @@ public class Logging {
    * @param logger the given logger.
    * @param level the log level.
    * @param serviceVersion the version of the service.
-   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc.
+   * @param environment the name of the environment, e.g. "dev", "acc", "prod", etc. It may be
+   *     <code>null</code>.
    * @param producer the Kafka producer.
    * @param logTopic the Kafka topic to publish the log messages on.
    * @since 1.1.3
