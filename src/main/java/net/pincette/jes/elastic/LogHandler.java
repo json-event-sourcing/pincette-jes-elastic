@@ -5,18 +5,26 @@ import static java.time.Instant.ofEpochMilli;
 import static java.util.Arrays.stream;
 import static java.util.Optional.ofNullable;
 import static java.util.logging.Level.SEVERE;
+import static java.util.stream.Stream.concat;
+import static net.pincette.json.JsonUtil.merge;
 
-import java.util.Optional;
+import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
+import java.util.stream.Stream;
 import javax.json.JsonObject;
-import net.pincette.jes.elastic.ElasticCommonSchema.Builder;
 import net.pincette.jes.elastic.ElasticCommonSchema.EventBuilder;
 
+/**
+ * This log handler produces JSON messages in the Elastic Common Schema format. You can add
+ * parameters of <code>javax.json.JsonObject</code>. The names in the objects should follow the
+ * Elastic Common Schema format. Those parameters are taken out before the normal message
+ * formatting.
+ *
+ * @author Werner Donn\u00e9
+ */
 public class LogHandler extends Handler {
-  private static final String TRACE_ID = "traceId";
-
   private final ElasticCommonSchema ecs;
   private final Consumer<JsonObject> send;
 
@@ -27,59 +35,60 @@ public class LogHandler extends Handler {
   }
 
   private static String action(final LogRecord logRecord) {
-    return Optional.ofNullable(logRecord.getSourceClassName()).map(name -> name + ".").orElse("")
-        + Optional.ofNullable(logRecord.getSourceMethodName()).orElse("Unknown method");
+    return ofNullable(logRecord.getSourceClassName()).map(name -> name + ".").orElse("")
+        + ofNullable(logRecord.getSourceMethodName()).orElse("Unknown method");
+  }
+
+  private static JsonObject addEcsFields(final JsonObject json, final LogRecord logRecord) {
+    return merge(
+        concat(
+            Stream.of(json),
+            ofNullable(logRecord.getParameters()).stream()
+                .flatMap(Arrays::stream)
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)));
   }
 
   private static String message(final LogRecord logRecord) {
-    return Optional.ofNullable(logRecord.getParameters())
-        .map(parameters -> format(unformattedMessage(logRecord), removeTraceId(parameters)))
+    return ofNullable(logRecord.getParameters())
+        .map(parameters -> format(unformattedMessage(logRecord), removeEcsFields(parameters)))
         .orElseGet(() -> unformattedMessage(logRecord));
   }
 
-  private static Object[] removeTraceId(final Object[] parameters) {
-    return stream(parameters).filter(p -> !p.toString().startsWith(TRACE_ID + "=")).toArray();
-  }
-
-  private static Optional<String> traceId(final LogRecord logRecord) {
-    return ofNullable(logRecord.getParameters())
-        .flatMap(
-            parameters ->
-                stream(parameters)
-                    .map(Object::toString)
-                    .map(s -> s.split("="))
-                    .filter(parts -> parts.length == 2 && parts[0].equals(TRACE_ID))
-                    .map(parts -> parts[1])
-                    .findFirst());
+  private static Object[] removeEcsFields(final Object[] parameters) {
+    return stream(parameters).filter(p -> !(p instanceof JsonObject)).toArray();
   }
 
   private static String unformattedMessage(final LogRecord logRecord) {
-    return Optional.ofNullable(logRecord.getResourceBundle())
+    return ofNullable(logRecord.getResourceBundle())
         .filter(bundle -> bundle.containsKey(logRecord.getMessage()))
         .map(bundle -> bundle.getString(logRecord.getMessage()))
         .orElseGet(logRecord::getMessage);
   }
 
   private JsonObject logMessage(final LogRecord logRecord) {
-    return ecs.builder()
-        .addMessage(message(logRecord))
-        .addTimestamp(ofEpochMilli(logRecord.getMillis()))
-        .addLogLevel(logRecord.getLevel())
-        .addIf(() -> traceId(logRecord), Builder::addTrace)
-        .addEvent()
-        .addCreated(ofEpochMilli(logRecord.getMillis()))
-        .addOriginal(message(logRecord))
-        .addSequence(logRecord.getSequenceNumber())
-        .addAction(action(logRecord))
-        .addSeverity(logRecord.getLevel().intValue())
-        .addIf(
-            b -> logRecord.getThrown() != null || logRecord.getLevel().equals(SEVERE),
-            EventBuilder::addFailure)
-        .build()
-        .addIf(
-            b -> logRecord.getThrown() != null,
-            b -> b.addError().addThrowable(logRecord.getThrown()).build())
-        .build();
+    final String message = message(logRecord);
+
+    return addEcsFields(
+        ecs.builder()
+            .addMessage(message)
+            .addTimestamp(ofEpochMilli(logRecord.getMillis()))
+            .addLogLevel(logRecord.getLevel())
+            .addEvent()
+            .addCreated(ofEpochMilli(logRecord.getMillis()))
+            .addOriginal(message)
+            .addSequence(logRecord.getSequenceNumber())
+            .addAction(action(logRecord))
+            .addSeverity(logRecord.getLevel().intValue())
+            .addIf(
+                b -> logRecord.getThrown() != null || logRecord.getLevel().equals(SEVERE),
+                EventBuilder::addFailure)
+            .build()
+            .addIf(
+                b -> logRecord.getThrown() != null,
+                b -> b.addError().addThrowable(logRecord.getThrown()).build())
+            .build(),
+        logRecord);
   }
 
   @Override
