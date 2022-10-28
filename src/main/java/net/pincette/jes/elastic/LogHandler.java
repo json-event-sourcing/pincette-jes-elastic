@@ -51,6 +51,7 @@ public class LogHandler extends Handler {
 
   private static String message(final LogRecord logRecord) {
     return ofNullable(logRecord.getParameters())
+        .filter(parameters -> parameters.length > 0)
         .map(parameters -> format(unformattedMessage(logRecord), removeEcsFields(parameters)))
         .orElseGet(() -> unformattedMessage(logRecord));
   }
