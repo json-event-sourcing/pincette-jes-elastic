@@ -7,7 +7,7 @@
   <groupId>net.pincette</groupId>
   <artifactId>pincette-jes-elastic</artifactId>
   <packaging>jar</packaging>
-  <version>3.0.5</version>
+  <version>3.0.6</version>
   <name>pincette-jes-elastic</name>
   <description>Elasticsearch Utilities for pincette-jes</description>
   <url>https://github.com/json-event-sourcing/pincette-jes-elastic</url>
@@ -53,7 +53,7 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-jes</artifactId>
-      <version>3.0.5</version>
+      <version>3.0.6</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
