@@ -7,7 +7,7 @@
   <groupId>net.pincette</groupId>
   <artifactId>pincette-jes-elastic</artifactId>
   <packaging>jar</packaging>
-  <version>3.0.12</version>
+  <version>3.0.13</version>
   <name>pincette-jes-elastic</name>
   <description>Elasticsearch Utilities for pincette-jes</description>
   <url>https://github.com/json-event-sourcing/pincette-jes-elastic</url>
@@ -53,12 +53,12 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-jes</artifactId>
-      <version>3.2</version>
+      <version>3.2.1</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-common</artifactId>
-      <version>2.3.4</version>
+      <version>2.3.5</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
@@ -119,8 +119,8 @@
           </additionalJOptions>
           <links>
             <link>https://docs.oracle.com/en/java/javase/11/docs/api/</link>
-            <link>https://www.javadoc.io/doc/net.pincette/pincette-jes/3.1.6/</link>
-            <link>https://www.javadoc.io/doc/net.pincette/pincette-common/2.3.3/</link>
+            <link>https://www.javadoc.io/doc/net.pincette/pincette-jes/3.2/</link>
+            <link>https://www.javadoc.io/doc/net.pincette/pincette-common/2.3.5/</link>
             <link>https://www.javadoc.io/doc/net.pincette/pincette-json/2.1.1/</link>
             <link>https://www.javadoc.io/doc/javax.json/javax.json-api/1.1.4/</link>
           </links>
