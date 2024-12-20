@@ -22,7 +22,7 @@ import net.pincette.jes.elastic.ElasticCommonSchema.EventBuilder;
  * Elastic Common Schema format. Those parameters are taken out before the normal message
  * formatting.
  *
- * @author Werner Donn\u00e9
+ * @author Werner Donné
  */
 public class LogHandler extends Handler {
   private final ElasticCommonSchema ecs;

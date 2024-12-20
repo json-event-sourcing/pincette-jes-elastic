@@ -25,7 +25,7 @@ import javax.json.JsonObjectBuilder;
  *
  * @see <a href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html">ECS Field
  *     Reference</a>
- * @author Werner Donn\u00e9
+ * @author Werner Donné
  * @since 1.1
  */
 public class ElasticCommonSchema {
@@ -139,7 +139,7 @@ public class ElasticCommonSchema {
 
   @SuppressWarnings("squid:S3398") // Not possible with static methods in non-static subclasses.
   private static String skipFirst(final String s, final char first) {
-    return s.length() > 0 && s.charAt(0) == first ? s.substring(1) : s;
+    return !s.isEmpty() && s.charAt(0) == first ? s.substring(1) : s;
   }
 
   /**

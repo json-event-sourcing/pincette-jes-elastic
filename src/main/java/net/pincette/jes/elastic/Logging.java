@@ -23,7 +23,7 @@ import net.pincette.jes.elastic.ElasticCommonSchema.EventBuilder;
 /**
  * Elasticsearch logging utilities for JSON Event Sourcing.
  *
- * @author Werner Donn\u00e9
+ * @author Werner Donné
  * @since 1.0
  */
 public class Logging {
